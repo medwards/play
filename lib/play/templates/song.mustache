@@ -1,6 +1,8 @@
-<div class="song">
+<div class="song {{#now_playing?}}now-playing{{/now_playing?}}">
   {{^queued?}}
-    <span class="play"><a href="/add/{{id}}" title="add to queue" class="add">&nbsp;►&nbsp;</a></span>
+    {{^now_playing?}}
+      <span class="play"><a href="/add/{{id}}" title="add to queue" class="add">&nbsp;►&nbsp;</a></span>
+    {{/now_playing?}}
   {{/queued?}}
 
   <div class="artist">
