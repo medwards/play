@@ -133,13 +133,13 @@ module Play
 
     get "/song/:id/download" do
       @song = Song.find(params[:id])
-      send_file @song.path
+      send_file @song.path, :disposition => 'attachment'
     end
 
     get "/album/:id/download" do
       @album = Album.find(params[:id])
       @album.zipped!
-      send_file @album.zip_path.gsub('\ ',' ')
+      send_file @album.zip_path, :disposition => 'attachment'
     end
 
     get "/search" do
@@ -151,7 +151,7 @@ module Play
     end
 
     get "/history" do
-      @songs = History.limit(100).order('created_at desc').collect(&:song)
+      @songs = History.limit(30).order('created_at desc').collect(&:song)
       mustache :play_history
     end
 

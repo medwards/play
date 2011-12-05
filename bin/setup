@@ -27,6 +27,20 @@ bundle install --quiet
 
 echo ""
 
+# Decide on a client
+if test $(which afplay) && test $(which say)
+then
+  echo "  + afplay and say found."
+  client='afplay'
+elif test $(which mpg123) && test $(which festival)
+then
+  echo "  + mpg123 and festival found."
+  client='mpg123'
+else
+  echo "  x You need to install mpg123 + festival or afplay + say"
+  exit
+fi
+
 # Check for MySQL
 if test ! $(which mysql)
 then
@@ -36,28 +50,9 @@ else
   echo "  + MySQL found."
 fi
 
-# MySQL setup
-echo "  + What's the username for the MySQL database user? › \c"
-read user
-echo "  + What's the password for the MySQL database user? › \c"
-stty -echo
-read password
-stty echo
-echo ""
-
-mysql --user="$user" \
-      --password="$password" \
-      --execute='CREATE DATABASE IF NOT EXISTS play CHARACTER SET utf8 COLLATE utf8_unicode_ci;'
-
-echo "  + You now have a database named \"play\"."
-
-echo ""
-echo "  + Migrating your database."
-bin/play migrate 2>&1 > /dev/null
-
 # Music setup
 echo ""
-echo "  + What is the absolute path to your music? › \c"
+echo -ne "  + What is the absolute path to your music? › "
 read path
 path=${path//\//\\/}
 
@@ -77,17 +72,38 @@ echo ""
 
 echo "    Press \"return\" to open a browser window and enter your OAuth details."
 read
-open "https://github.com/account/applications/new"
+if [[ "Darwin" == "$(uname)" ]]
+then
+  open "https://github.com/account/applications/new"
+else
+  echo "    Uh oh! You're on Linux."
+  echo "    Open https://github.com/account/applications/new in your browser."
+  echo ""
+fi
 
-echo "  + What's your GitHub client ID?     › \c"
+echo -ne "  + What's your GitHub client ID?     › "
 read client_id
-echo "  + What's your GitHub client secret? › \c"
+echo -ne "  + What's your GitHub client secret? › "
 read client_secret
 
 echo ""
 echo "  + We hit the Last.fm API for beautiful gorgeous album art. If you have"
-echo "    an API key, well, what is it? › \c"
+echo -ne "    an API key, well, what is it?     › "
 read lastfm_key
+
+echo ""
+
+# MySQL setup
+echo -ne "  + What's the username for the MySQL database user? › "
+read user
+echo -ne "  + What's the password for the MySQL database user? › "
+stty -echo
+read password
+stty echo
+echo ""
+
+echo "  + Configuration settings saved to config/play.yml."
+echo "    Feel free to manually update the file anytime you'd like."
 
 echo ""
 
@@ -99,12 +115,25 @@ then
   mv config/play.yml config/play.backup.yml
 fi
 cp config/play.example.yml config/play.yml
-sed -i '' "s/__PATH__/$path/" config/play.yml
-sed -i '' "s/__OAUTH_KEY__/$client_id/" config/play.yml
-sed -i '' "s/__OAUTH_SECRET__/$client_secret/" config/play.yml
-sed -i '' "s/__USER__/$user/" config/play.yml
-sed -i '' "s/__PASSWORD__/$password/" config/play.yml
-sed -i '' "s/__LASTFM_KEY__/$lastfm_key/" config/play.yml
+sed -i'' "s/__PATH__/$path/" config/play.yml
+sed -i'' "s/__OAUTH_KEY__/$client_id/" config/play.yml
+sed -i'' "s/__OAUTH_SECRET__/$client_secret/" config/play.yml
+sed -i'' "s/__USER__/$user/" config/play.yml
+sed -i'' "s/__PASSWORD__/$password/" config/play.yml
+sed -i'' "s/__CLIENT__/$client/" config/play.yml
+sed -i'' "s/__LASTFM_KEY__/$lastfm_key/" config/play.yml
 
-echo "  + Configuration settings saved to config/play.yml."
-echo "    Feel free to manually update the file anytime you'd like."
+mysql --user="$user" \
+      --password="$password" \
+      --execute='CREATE DATABASE IF NOT EXISTS play CHARACTER SET utf8 COLLATE utf8_unicode_ci;'
+
+echo "  + You now have a database named \"play\"."
+
+echo ""
+echo "  + Migrating your database."
+bin/play migrate 2>&1 > /dev/null
+
+echo ""
+
+echo "  Good work. We're ready to rock."
+echo "  Run 'bin/play start' to start playing."

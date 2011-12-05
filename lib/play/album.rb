@@ -12,8 +12,13 @@ module Play
     #
     # Returns nothing.
     def self.fetch_art!
-      puts "Grabbing art for all your albums."
+      puts "Grabbing art for all #{count} of your albums."
       Album.find_each(:batch_size => 250) do |album|
+        next unless album.art_url.nil?
+        next if album.name.blank?
+        next if album.artist.name.blank?
+
+        puts "  => [#{album.id}] #{album.artist.name} - #{album.name}"
         album.save
       end
     end
@@ -23,12 +28,27 @@ module Play
     # dependencies.
     #
     # Returns the found art_url String.
-    def fetch_art
+    def fetch_art(force=false)
+      return unless force or art_url.nil?
+      return unless url = lastfm_url
+
+      return if name.blank?
+      return if artist.name.blank?
+
+      xml = `curl --silent "#{url}" | grep '<image size="extralarge">'`
+      self.art_url = xml.strip.sub('<image size="extralarge">','').sub('</image>','')
+    end
+
+    # LastFM album.getinfo url for this album.
+    #
+    # Returns a String url, or nil if lastfm is not configured.
+    def lastfm_url
       key = Play.config['lastfm_key']
       return if key.blank?
+
       url = "http://ws.audioscrobbler.com/2.0/?method=album.getinfo"
-      xml = `curl --silent "#{url}&api_key=#{key}&artist=#{URI.escape artist.name}&album=#{URI.escape name}" | grep '<image size="extralarge">'`
-      self.art_url = xml.strip.sub('<image size="extralarge">','').sub('</image>','')
+      album_name = name.sub(/(EP|\[Explicit\]| )*$/i, '')
+      "#{url}&api_key=#{key}&artist=#{URI.escape artist.name}&album=#{URI.escape album_name}"
     end
 
     # Queue up an entire ALBUM!
@@ -46,7 +66,7 @@ module Play
     #
     # Returns a String path on the filesystem.
     def path
-      File.expand_path File.join(songs.first.path, '..').gsub(' ','\ ')
+      File.expand_path '../', songs.first.path
     end
 
     # Zips up an album and stashes in it a temporary directory.
@@ -55,7 +75,7 @@ module Play
     def zipped!
       return if File.exist?(zip_path)
       FileUtils.mkdir_p "/tmp/play-zips"
-      system "zip #{zip_path} #{path}/*"
+      system 'tar', '-cf', zip_path, '-C', File.expand_path('..',path), File.basename(path)
     end
 
     # The name of the zipfile.

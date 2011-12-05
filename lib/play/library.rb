@@ -73,8 +73,6 @@ module Play
                            :title => title,
                            :track => tracknum}
       end
-    rescue AudioInfoError => error
-      print "'#{path}' failed to import due to #{error.inspect}\n"
     end
 
     # Splits a music file up into three constituent parts: artist, title,
@@ -91,6 +89,7 @@ module Play
                info.album.try(:strip),
                info.tracknum.try(:to_i)
       end
+    rescue AudioInfoError
     end
   end
 end
