@@ -44,11 +44,11 @@ module Play
     # Returns a String url, or nil if lastfm is not configured.
     def lastfm_url
       key = Play.config['lastfm_key']
-      return if key.blank?
+      return if key.blank? or name.nil? or artist.nil?
 
       url = "http://ws.audioscrobbler.com/2.0/?method=album.getinfo"
       album_name = name.sub(/(EP|\[Explicit\]| )*$/i, '')
-      "#{url}&api_key=#{key}&artist=#{URI.escape artist.name}&album=#{URI.escape album_name}"
+      "#{url}&api_key=#{key}&artist=#{URI.escape artist.first.name}&album=#{URI.escape album_name}"
     end
 
     # Queue up an entire ALBUM!
